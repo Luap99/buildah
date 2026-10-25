@@ -83,13 +83,11 @@ load helpers
     run_buildah from --quiet $WITH_POLICY_JSON alpine
     cid="$output"
     run_buildah --log-level=error run $cid sh -c 'df /dev/shm | awk '\''/shm/{print $4}'\'''
-    # On architectures with 64k page size (e.g. ppc64le), the
-    # kernel rounds shm sizes up to the nearest page boundary.
+    # The kernel rounds tmpfs (/dev/shm) sizes up to a multiple of the
+    # page size, so with pages larger than 4k (e.g. 16k on some aarch64,
+    # 64k on ppc64le) the size we get may be bigger than the 200k asked for.
     pagesize="$(getconf PAGESIZE)"
-    expected=200
-    if [ "$pagesize" -eq 65536 ]; then
-        expected=256
-    fi
+    expected=$(( (200 * 1024 + pagesize - 1) / pagesize * pagesize / 1024 ))
     expect_output "$expected"
 }
 
